@@ -11,6 +11,7 @@ Fluxo:
 import streamlit as st
 import os, sys, re, json, shutil, calendar, zipfile, tempfile, io
 from datetime import datetime, date, timedelta
+import pytz
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -376,7 +377,8 @@ if st.button("🚀 ATUALIZAR PICK-UP", type="primary", use_container_width=True)
                 except: pass
 
             # Data da emissão
-            hoje = date.today()
+            br_tz = pytz.timezone('America/Sao_Paulo')
+            hoje = datetime.now(br_tz).date()
             dow = hoje.weekday()
             if dow == 0:
                 sexta = hoje - timedelta(days=3)
