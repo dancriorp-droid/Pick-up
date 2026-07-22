@@ -3,3 +3,5 @@ openpyxl
 pandas
 lxml
 pytz
+google-auth
+google-api-python-client
