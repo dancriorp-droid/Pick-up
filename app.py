@@ -330,10 +330,12 @@ if st.button("🚀 ATUALIZAR PICK-UP",type="primary",use_container_width=True):
         for hk,i in res.items(): st.markdown(f"**{hk.upper()}**: {i['n']} dias atualizados")
 
         st.markdown("### 📥 Downloads")
-        d1,d2=st.columns(2)
-        with open(pp,'rb') as f: d1.download_button("📊 Planilha",f.read(),"Pick-up_sniper.xlsx")
-        d1.download_button("📋 Histórico",json.dumps(hist,indent=2,ensure_ascii=False),"pickup_historico.json")
-        for hk,path in pptxs.items():
-            with open(path,'rb') as f:
-                nm="Normandie" if hk=='normandie' else "Alto"
-                d2.download_button(f"📥 PPTX {nm}",f.read(),f"pickup_{hk}_gerado.pptx")
+        # Criar ZIP com tudo
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            with open(pp,'rb') as f: zf.writestr('Pick-up_sniper.xlsx', f.read())
+            zf.writestr('pickup_historico.json', json.dumps(hist,indent=2,ensure_ascii=False))
+            for hk,path in pptxs.items():
+                with open(path,'rb') as f: zf.writestr(f'pickup_{hk}_gerado.pptx', f.read())
+        zip_buf.seek(0)
+        st.download_button("📥 BAIXAR TUDO (ZIP)", zip_buf.getvalue(), "pickup_atualizado.zip", "application/zip", use_container_width=True)
