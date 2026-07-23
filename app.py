@@ -315,18 +315,16 @@ if st.button("🚀 ATUALIZAR PICK-UP",type="primary",use_container_width=True):
                     if os.path.exists(op): pptxs[hk]=op
 
             if drive_ok:
-                with open(pp,'rb') as f: pb=f.read()
-                ex=drive_find(drive_svc,'Pick-up_sniper.xlsx',FOLDER_ID)
-                drive_upload(drive_svc,'Pick-up_sniper.xlsx',pb,FOLDER_ID,ex['id'] if ex else None)
-                hb=json.dumps(hist,indent=2,ensure_ascii=False).encode('utf-8')
-                eh=drive_find(drive_svc,'pickup_historico.json',FOLDER_ID)
-                drive_upload(drive_svc,'pickup_historico.json',hb,FOLDER_ID,eh['id'] if eh else None)
-                for hk,path in pptxs.items():
-                    with open(path,'rb') as f: xb=f.read()
-                    fn=f'pickup_{hk}_gerado.pptx'
-                    ep=drive_find(drive_svc,fn,FOLDER_ID)
-                    drive_upload(drive_svc,fn,xb,FOLDER_ID,ep['id'] if ep else None)
-                st.success("☁️ Tudo salvo no Google Drive!")
+                try:
+                    with open(pp,'rb') as f: pb=f.read()
+                    ex=drive_find(drive_svc,'Pick-up_sniper.xlsx',FOLDER_ID)
+                    drive_upload(drive_svc,'Pick-up_sniper.xlsx',pb,FOLDER_ID,ex['id'] if ex else None)
+                    hb=json.dumps(hist,indent=2,ensure_ascii=False).encode('utf-8')
+                    eh=drive_find(drive_svc,'pickup_historico.json',FOLDER_ID)
+                    drive_upload(drive_svc,'pickup_historico.json',hb,FOLDER_ID,eh['id'] if eh else None)
+                    st.success("☁️ Planilha e histórico salvos no Google Drive!")
+                except Exception as e:
+                    st.warning(f"⚠️ Erro ao salvar no Drive: {e}")
 
         st.success("✅ Concluído!")
         for hk,i in res.items(): st.markdown(f"**{hk.upper()}**: {i['n']} dias atualizados")
