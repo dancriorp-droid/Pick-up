@@ -55,7 +55,7 @@ def drive_download(svc, fid):
     buf.seek(0); return buf.read()
 
 def drive_upload(svc, name, data, folder=None, existing_id=None):
-    media = MediaIoBaseUpload(io.BytesIO(data), resumable=True, mimetype='application/octet-stream')
+    media = MediaIoBaseUpload(io.BytesIO(data), mimetype='application/octet-stream', resumable=False)
     if existing_id:
         svc.files().update(fileId=existing_id, media_body=media).execute()
     else:
