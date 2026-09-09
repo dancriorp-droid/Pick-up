@@ -188,11 +188,57 @@ def atualizar_aba(ws,dados_hits,hk):
         if dm>0 and tr: ws.cell(row=tr+2,column=c+5).value=round(dm,2)
     return att,pu_mes
 
+def criar_bloco_metas_alto(wm, idx, mes_num, ano):
+    """Cria bloco de metas completo (labels + valores de meta) para um mes novo."""
+    b = 7 + idx * 7
+    nome = MESES_PT[mes_num - 1]
+    m = METAS.get('alto', {}).get(mes_num, {})
+    RED = Font(name='Aptos Narrow', size=11, color='FF0000')
+
+    wm.cell(row=b, column=10).value = f'Quantos dias faltam - {nome}'
+    br_tz = pytz.timezone('America/Sao_Paulo'); hj = datetime.now(br_tz).date()
+    ultimo_dia = date(ano, mes_num, calendar.monthrange(ano, mes_num)[1])
+    dias_faltam = max(1, (ultimo_dia - hj).days + 1)
+    wm.cell(row=b, column=13).value = dias_faltam
+
+    wm.cell(row=b+2, column=10).value = nome
+    wm.cell(row=b+2, column=12).value = 'Acumulada'
+    wm.cell(row=b+2, column=13).value = 'Meta'
+    wm.cell(row=b+2, column=14).value = '% Atingimento'
+    wm.cell(row=b+2, column=15).value = 'Falta por dia'
+
+    wm.cell(row=b+3, column=11).value = 'Receita'
+    wm.cell(row=b+3, column=12).value = 0
+    wm.cell(row=b+3, column=13).value = m.get('rec', 0)
+    wm.cell(row=b+3, column=13).font = RED
+
+    wm.cell(row=b+4, column=11).value = 'Ocupação'
+    wm.cell(row=b+4, column=12).value = 0
+    wm.cell(row=b+4, column=13).value = m.get('occ', 0)
+    wm.cell(row=b+4, column=13).font = RED
+
+    wm.cell(row=b+5, column=11).value = 'Diária Média'
+    wm.cell(row=b+5, column=12).value = 0
+    wm.cell(row=b+5, column=13).value = m.get('dm', 0)
+    wm.cell(row=b+5, column=13).font = RED
+
 def atualizar_metas_alto(wb):
     if 'Alto da Boa Vista Metas' not in wb.sheetnames: return
     if 'Alto da Boa Vista' not in wb.sheetnames: return
     wd=wb['Alto da Boa Vista']; wm=wb['Alto da Boa Vista Metas']
     meses=mapear_meses(wd)
+
+    # FIX 1: criar bloco completo (labels + metas) para meses que ainda nao tem bloco
+    n_blocos = 0
+    for r in range(1, wm.max_row + 1):
+        v = wm.cell(row=r, column=10).value
+        if v and isinstance(v, str) and 'Quantos dias' in v:
+            n_blocos += 1
+    if len(meses) > n_blocos:
+        for idx in range(n_blocos, min(len(meses), 9)):
+            mi = meses[idx]
+            criar_bloco_metas_alto(wm, idx, mi['mes'], mi['ano'])
+
     for idx,mi in enumerate(meses):
         if idx>=9: break
         b=7+idx*7; c=mi['col_base']; tr=to=0.; nd=0
@@ -208,6 +254,13 @@ def atualizar_metas_alto(wb):
         om=to/ndm if ndm>0 else 0.
         wm.cell(row=b+3,column=12).value=tr
         wm.cell(row=b+4,column=12).value=om/100 if om>1 else om
+
+        # FIX 2: copiar a Diaria Media ja calculada na aba de dados (TOTAL+2, col+5)
+        if mi.get('total_row'):
+            dm_dados = wd.cell(row=mi['total_row']+2, column=c+5).value
+            if dm_dados and isinstance(dm_dados,(int,float)) and float(dm_dados) > 0:
+                wm.cell(row=b+5, column=12).value = round(float(dm_dados), 2)
+
         mr=wm.cell(row=b+3,column=13).value; mo=wm.cell(row=b+4,column=13).value
         if mr and isinstance(mr,(int,float)) and float(mr)>0: wm.cell(row=b+3,column=14).value=tr/float(mr)
         if mo and isinstance(mo,(int,float)) and float(mo)>0: wm.cell(row=b+4,column=14).value=(om/100 if om>1 else om)/float(mo)
