@@ -127,10 +127,9 @@ def atualizar_aba(ws,dados_hits,hk):
     if not meses: return 0,{}
     datas=sorted(dados_hits.keys())
     if not datas: return 0,{}
-    mh=set(d.month for d in datas); mp=set(m['mes'] for m in meses); mx=max(mp) if mp else 0
-    for mn in sorted(mh-mp):
-        if mn<=mx: continue
-        an=next(d.year for d in datas if d.month==mn)
+    mh=set((d.year,d.month) for d in datas); mp=set((m['ano'],m['mes']) for m in meses); mx=max(mp) if mp else (0,0)
+    for (an,mn) in sorted(mh-mp):
+        if (an,mn)<=mx: continue
         meses.append(criar_mes_novo(ws,meses,mn,an,hk))
     att=0; pu_mes={}
     for mi in meses:
