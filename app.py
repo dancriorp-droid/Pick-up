@@ -128,8 +128,10 @@ def atualizar_aba(ws,dados_hits,hk):
     datas=sorted(dados_hits.keys())
     if not datas: return 0,{}
     mh=set((d.year,d.month) for d in datas); mp=set((m['ano'],m['mes']) for m in meses); mx=max(mp) if mp else (0,0)
+    criados=set()
     for (an,mn) in sorted(mh-mp):
         if (an,mn)<=mx: continue
+        criados.add((an,mn))
         meses.append(criar_mes_novo(ws,meses,mn,an,hk))
     att=0; pu_mes={}
     for mi in meses:
@@ -148,6 +150,8 @@ def atualizar_aba(ws,dados_hits,hk):
             hr=ws.cell(row=r,column=c+3).value; ho=ws.cell(row=r,column=c+4).value
             or_=float(hr) if hr and isinstance(hr,(int,float)) else 0.
             oo=float(ho) if ho and isinstance(ho,(int,float)) else 0.
+            if (mi['ano'],mi['mes']) in criados:   # mes novo: sem base de comparacao, pick-up = 0
+                or_=float(h['receita']); oo=float(h['ocupacao'])
             ws.cell(row=r,column=c+1).value=or_; ws.cell(row=r,column=c+2).value=oo
             ws.cell(row=r,column=c+3).value=h['receita']; ws.cell(row=r,column=c+4).value=h['ocupacao']
             pr=h['receita']-or_; po=h['ocupacao']-oo
