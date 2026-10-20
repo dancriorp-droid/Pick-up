@@ -623,6 +623,43 @@ def detectar_estrutura(pptx_path):
             for sf in slides)
     return n_slides, 3 if tem_metas else 2
 
+NSP_URI = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+def ajustar_nome_mes(root):
+    """Padroniza o nome do mes em TODOS os slides: sem quebra de linha,
+    centralizado e na mesma posicao, independente da fonte instalada no PC."""
+    nomes = {m.upper() for m in MESES_PT} | {'MARCO', 'MAR\u00c7O'}
+    for sp in root.iter(f'{{{NSP_URI}}}sp'):
+        ts = [t for t in sp.iter(f'{{{NSA}}}t')]
+        if len(ts) != 1 or not ts[0].text or ts[0].text.strip().upper() not in nomes:
+            continue
+        bp = next(sp.iter(f'{{{NSA}}}bodyPr'), None)
+        off = next(sp.iter(f'{{{NSA}}}off'), None)
+        ext = next(sp.iter(f'{{{NSA}}}ext'), None)
+        if bp is None or off is None or ext is None:
+            continue
+        x = int(off.get('x'))
+        if x < 4000000:                       # slide do calendario (cartao da esquerda)
+            cx, y, w, h = 1840000, 4420000, 2700000, 420000
+        else:                                 # resumo / metas: alinhar ao titulo do mesmo slide
+            tit = None
+            for sp2 in root.iter(f'{{{NSP_URI}}}sp'):
+                tx = ''.join(t.text or '' for t in sp2.iter(f'{{{NSA}}}t')).upper()
+                if tx.startswith(('RESUMO', 'ACOMPANHAMENTO')):
+                    tit = sp2; break
+            if tit is None:
+                continue
+            to = next(tit.iter(f'{{{NSA}}}off')); te = next(tit.iter(f'{{{NSA}}}ext'))
+            tx0, ty0, tcx = int(to.get('x')), int(to.get('y')), int(te.get('cx'))
+            k = tcx / 15310848.0              # escala (slides em grupo usam outra escala)
+            cx = tx0 + tcx // 2
+            y = int(ty0 + (2200000 - 1008555) * k)
+            w, h = int(8000000 * k), int(660527 * k)
+        bp.set('wrap', 'square')   # caixa larga: nao quebra e fica centralizada
+        off.set('x', str(cx - w // 2)); off.set('y', str(y))
+        ext.set('cx', str(w)); ext.set('cy', str(h))
+        for p in sp.iter(f'{{{NSA}}}pPr'):
+            p.set('algn', 'ctr')
+
 n_slides, slides_por_mes = detectar_estrutura(PPTX_IN)
 n_meses_template = (n_slides - 1) // slides_por_mes
 print(f"Template: {n_slides} slides, {slides_por_mes}/mes, {n_meses_template} meses")
@@ -676,6 +713,7 @@ with zipfile.ZipFile(PPTX_IN, 'r') as zi:
             if tipo == 'cal':    root = proc_calendario(root, mes_data)
             elif tipo == 'res':  root = proc_resumo(root, mes_data, meta, idx)
             elif tipo == 'meta': root = proc_metas(root, mes_data, meta)
+            ajustar_nome_mes(root)
             zo.writestr(path, etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True))
 
 os.replace(tmp, PPTX_OUT)
