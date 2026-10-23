@@ -385,7 +385,60 @@ def atualizar_bloco_7dias(root, mes_data, mes_num):
     return root
 
 
+def garantir_dia_31(root, mes_data):
+    """Templates de mes com 30 caixas (ex.: Dezembro herdado de Novembro) ganham a caixa do dia 31."""
+    import copy
+    dias_d = {d['dia'] for d in mes_data['dias']}
+    if 31 not in dias_d: return
+    dia_card = mapear_dia_card(root)
+    if 31 in dia_card or not all(d in dia_card for d in (30, 24, 17)): return
+    spTree = root.find(f'.//{{{NSP}}}spTree')
+    def off_of(el):
+        return next(el.iter(f'{{{NSA}}}off'))
+    def xy(el):
+        o = off_of(el); return int(o.get('x')), int(o.get('y'))
+    c30, c24, c17 = dia_card[30], dia_card[24], dia_card[17]
+    x30, y30 = xy(c30); x24, y24 = xy(c24); y17 = xy(c17)[1]
+    nx, ny = x24, y24 + (y24 - y17)                 # coluna do dia 24, linha seguinte
+    # numero do dia 30 = sp de texto "30" mais proximo do cartao 30
+    cand = [c for c in spTree if c.tag.split('}')[-1] == 'sp'
+            and [t.text.strip() for t in get_t_elems(c)][:1] == ['30']]
+    if not cand: return
+    num30 = min(cand, key=lambda c: abs(xy(c)[0]-x30) + abs(xy(c)[1]-y30))
+    nxn, nyn = xy(num30)
+    novo_card = copy.deepcopy(c30); novo_num = copy.deepcopy(num30)
+    o = off_of(novo_card); o.set('x', str(nx)); o.set('y', str(ny))
+    o = off_of(novo_num); o.set('x', str(nx + (nxn - x30))); o.set('y', str(ny + (nyn - y30)))
+    for t in novo_num.iter(f'{{{NSA}}}t'):
+        if t.text and t.text.strip() == '30': t.text = '31'
+    ids = [int(e.get('id')) for e in root.iter(f'{{{NSP}}}cNvPr') if (e.get('id') or '').isdigit()]
+    nid = max(ids) + 1
+    for el in (novo_card, novo_num):
+        for e in el.iter(f'{{{NSP}}}cNvPr'):
+            e.set('id', str(nid)); nid += 1
+    spTree.insert(list(spTree).index(c30) + 1, novo_card)
+    spTree.insert(list(spTree).index(num30) + 1, novo_num)
+
+def remover_dias_extras(root, mes_data):
+    """Remove caixas de dias que nao existem no mes (ex.: dia 31 sobrando em Novembro)."""
+    dias_d = {d['dia'] for d in mes_data['dias']}
+    dia_card = mapear_dia_card(root)
+    spTree = root.find(f'.//{{{NSP}}}spTree')
+    for d in (29, 30, 31):
+        if d in dias_d or d not in dia_card: continue
+        card = dia_card[d]
+        o = next(card.iter(f'{{{NSA}}}off')); cx0, cy0 = int(o.get('x')), int(o.get('y'))
+        cand = [c for c in spTree if c.tag.split('}')[-1] == 'sp'
+                and [t.text.strip() for t in get_t_elems(c)][:1] == [str(d)]]
+        if cand:
+            def dist(c):
+                oo = next(c.iter(f'{{{NSA}}}off')); return abs(int(oo.get('x'))-cx0)+abs(int(oo.get('y'))-cy0)
+            spTree.remove(min(cand, key=dist))
+        spTree.remove(card)
+
 def proc_calendario(root, mes_data):
+    remover_dias_extras(root, mes_data)
+    garantir_dia_31(root, mes_data)
     nome = mes_data['nome']
     dias_d = {d['dia']: d for d in mes_data['dias']}
     for t in root.iter(f'{{{NSA}}}t'):
