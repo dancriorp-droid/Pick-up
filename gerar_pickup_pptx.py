@@ -436,6 +436,23 @@ def remover_dias_extras(root, mes_data):
             spTree.remove(min(cand, key=dist))
         spTree.remove(card)
 
+def colorir_fim_de_semana(root, mes_data, dia_card):
+    """Numero do dia em vermelho so quando o dia realmente cai em sabado/domingo."""
+    spTree = root.find(f'.//{{{NSP}}}spTree')
+    nums = [c for c in spTree if c.tag.split('}')[-1] == 'sp'
+            and re.fullmatch(r'\d{1,2}', ''.join(t.text.strip() for t in get_t_elems(c) if t.text) or 'x')]
+    def pos(el):
+        o = next(el.iter(f'{{{NSA}}}off')); return int(o.get('x')), int(o.get('y'))
+    for d in mes_data['dias']:
+        card = dia_card.get(d['dia'])
+        if card is None or not nums: continue
+        cx0, cy0 = pos(card)
+        cand = [n for n in nums if ''.join(t.text.strip() for t in get_t_elems(n) if t.text) == str(d['dia'])]
+        if not cand: continue
+        num = min(cand, key=lambda n: abs(pos(n)[0]-cx0) + abs(pos(n)[1]-cy0))
+        cor = 'CD1217' if d['data'].weekday() >= 5 else '3D3B30'
+        for c in num.iter(f'{{{NSA}}}srgbClr'): c.set('val', cor)
+
 def proc_calendario(root, mes_data):
     remover_dias_extras(root, mes_data)
     garantir_dia_31(root, mes_data)
@@ -454,6 +471,7 @@ def proc_calendario(root, mes_data):
             elif re.match(r'^[\d,.-]+$', txt):
                 set_all_text(p, fmt_o(mes_data['pickup_o']))
     dia_card = mapear_dia_card(root)
+    colorir_fim_de_semana(root, mes_data, dia_card)
     for dia, card_elem in dia_card.items():
         if dia not in dias_d:
             for p in card_elem.iter(f'{{{NSA}}}p'):
